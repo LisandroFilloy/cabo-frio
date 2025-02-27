@@ -1,0 +1,1 @@
+export const ListaLocales = ['A. Baranda', '12 Octubre', 'Mitre', 'Solano hela', 'Solano mayorista'];

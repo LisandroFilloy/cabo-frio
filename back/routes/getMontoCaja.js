@@ -1,0 +1,94 @@
+const express = require('express');
+const router = express.Router();
+const { authenticateToken } = require('../authMiddleware'); // Import the middleware
+const { pool } = require('../server'); // Import pool from server.js
+
+router.post('/', authenticateToken, async (req, res) => {
+    try {
+
+        const {local} = req.body;
+       
+       // Query to calculate monto
+        const query_monto = `
+            WITH fecha_ultimo_mov_caja AS (
+            SELECT fecha_ingreso, monto FROM caja WHERE local = $1 ORDER BY fecha_ingreso DESC LIMIT 1 ),
+            monto_efectivo AS (
+                SELECT 
+                    'efectivo' AS key,
+                    SUM(v.total_pesos) AS monto 
+                FROM ventas v,fecha_ultimo_mov_caja 
+                WHERE local = $1
+                AND medio_de_pago = 'efectivo' 
+                AND v.fecha_creacion >= fecha_ultimo_mov_caja.fecha_ingreso
+                AND v.eliminada = FALSE),
+            monto_egresos AS (
+                SELECT 
+                    'egresos' AS key,
+                    SUM(e.monto) AS monto
+                    FROM egresos e, fecha_ultimo_mov_caja
+                    WHERE local = $1
+                    AND e.fecha_egreso >= fecha_ultimo_mov_caja.fecha_ingreso
+                    AND eliminado = FALSE
+                    AND pendiente = FALSE
+                    and usuario != 'admin'),
+            monto_inicial as (
+                SELECT
+                    'monto_inicial' as key,
+                    monto
+                    FROM fecha_ultimo_mov_caja
+            ),
+            correcciones as (
+                SELECT 
+                cantidad
+                FROM correcciones_caja cc, fecha_ultimo_mov_caja
+                WHERE local = $1
+                AND cc.fecha_creacion >= fecha_ultimo_mov_caja.fecha_ingreso
+            ),
+            correccion as (
+                select 
+                'correccion' as key,
+                sum(cantidad) as monto
+                from correcciones
+            )
+            SELECT * FROM monto_efectivo
+            UNION
+            SELECT * FROM monto_egresos
+            UNION 
+            SELECT * FROM monto_inicial
+            UNION 
+            SELECT * from correccion
+        `;
+
+        const result_monto = await pool.query(query_monto, [local]);
+        const data_monto = result_monto.rows;
+
+        let efectivo = 0;
+        let egresos = 0;
+        let monto_inicial = 0;
+        let correccion = 0;
+
+        // Iterate through data_monto to find the correct values
+        data_monto.forEach(item => {
+            if (item.key === 'efectivo') {
+                efectivo = parseFloat(item.monto) || 0;
+            } else if (item.key === 'egresos') {
+                egresos = parseFloat(item.monto) || 0;
+            } else if (item.key === 'monto_inicial') {
+                monto_inicial = parseFloat(item.monto) || 0;
+            } else if (item.key === 'correccion') {
+                correccion = parseFloat(item.monto) || 0;
+            }
+        });
+
+
+        // Compute the difference
+        const monto = efectivo + monto_inicial - egresos + correccion;
+        res.status(200).json(monto)
+
+    } catch (error) {
+        console.error('Error al obtener el monto de la caja:', error.message);
+        res.status(500).json({ error: 'Error al obtener el monto de la caja' });
+    }
+});
+
+module.exports = router;
