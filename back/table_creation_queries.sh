@@ -40,7 +40,8 @@ CREATE TABLE ventas (
     medio_de_pago VARCHAR(255) NOT NULL,
     tipo_venta VARCHAR(255) NOT NULL,
     usuario VARCHAR(255) NOT NULL,
-    eliminada BOOLEAN NOT NULL DEFAULT FALSE
+    eliminada BOOLEAN NOT NULL DEFAULT FALSE,
+    FOREIGN KEY (usuario) REFERENCES usuarios(usuario)
 );
 "
 
@@ -51,7 +52,8 @@ CREATE TABLE caja (
     local VARCHAR(255) NOT NULL,
     monto NUMERIC,
     usuario VARCHAR(255) NOT NULL,
-    accion VARCHAR(255) NOT NULL
+    accion VARCHAR(255) NOT NULL,
+    FOREIGN KEY (usuario) REFERENCES usuarios(usuario)
 );
 "
 
@@ -65,7 +67,8 @@ CREATE TABLE egresos (
     descripcion TEXT,
     usuario VARCHAR(255) NOT NULL,
     eliminado BOOLEAN NOT NULL DEFAULT FALSE,
-    pendiente BOOLEAN NOT NULL DEFAULT FALSE
+    pendiente BOOLEAN NOT NULL DEFAULT FALSE,
+    FOREIGN KEY (usuario) REFERENCES usuarios(usuario)
 );
 "
 
@@ -113,7 +116,8 @@ CREATE TABLE stock (
     cantidad NUMERIC NOT NULL,
     tipo VARCHAR(255) NOT NULL,
     agregar BOOLEAN NOT NULL,
-    eliminado BOOLEAN NOT NULL DEFAULT FALSE
+    eliminado BOOLEAN NOT NULL DEFAULT FALSE,
+    FOREIGN KEY (nombre, local) REFERENCES stock_valores(nombre, local)
 );
 "
 
